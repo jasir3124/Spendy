@@ -1,0 +1,46 @@
+{
+  "expo": {
+    "name": "Spendy",
+    "slug": "spendy",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/app-logo.png",
+    "scheme": "spendyapp",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/images/logo-no-background.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "icon": "./assets/images/app-logo.png"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/app-logo.png",
+        "backgroundColor": "#fff"
+      }
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "static",
+      "favicon": "./assets/images/app-logo.png"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/logo-no-background.png",
+          "imageWidth": 300
+        }
+      ],
+      "expo-font"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
