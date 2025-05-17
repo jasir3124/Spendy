@@ -1,0 +1,25 @@
+import { View, Text, TouchableOpacity } from 'react-native';
+import { useRouter } from 'expo-router';
+
+export default function EmailConfirmed() {
+    const router = useRouter();
+
+    return (
+        <View className="flex-1 items-center justify-center bg-[#1D201F] p-6">
+            <View className="bg-[#240046] rounded-2xl p-8 w-full max-w-md shadow-lg">
+                <Text className="text-[#AF47E8] text-3xl font-bold mb-4 text-center">Email Confirmed</Text>
+                <Text className="text-[#FFFFFF] text-base mb-6 text-center">
+                    Your email has been successfully confirmed. You can now return to the app and log in.
+                </Text>
+
+                <TouchableOpacity
+                    onPress={() => router.replace('/(auth)/LogIn')}
+                    className="bg-[#5A189A] p-4 rounded-xl items-center"
+                >
+                    <Text className="text-[#FFFFFF] text-lg font-semibold">Return to App</Text>
+                </TouchableOpacity>
+            </View>
+        </View>
+    );
+}
+    

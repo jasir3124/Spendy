@@ -1,67 +1,93 @@
-import {StyleSheet, Text, TextInput, TouchableOpacity, View} from 'react-native'
-import React, {useState} from 'react'
+import React, {useEffect, useState} from 'react'
+import {
+    ActivityIndicator,
+    KeyboardAvoidingView,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
+} from 'react-native'
+import {Link, useRouter} from "expo-router";
 import {Controller, useForm} from "react-hook-form"
 import {Ionicons} from "@expo/vector-icons";
 
-import { useUserData } from '../../context/UserDataContext';
+import {supabase} from '../../lib/supabase'
+
+import {useUserData} from '../../context/UserDataContext';
 
 import Wave from '@/assets/svg/wave.svg'
-
-import {supabase} from '../../lib/supabase'
-import {useRouter} from "expo-router";
+import CostumAlert from "../components/shared/CostumAlert"
 
 export default function SignUp() {
     const router = useRouter()
-    const { setUserData } = useUserData();
+    const {updateUserData} = useUserData();
+
+    const [ServerError, setServerError] = useState("")
+    const [ShowAlertModal, setShowAlertModal] = useState(false)
+    const [AlertModalData, setAlertModalData] = useState({
+        title: "",
+        message: "",
+        type: ""
+    })
+    const [SignUpLoading, setSignUpLoading] = useState(false)
 
     const {
-        control,
-        handleSubmit,
-        formState: {errors},
+        control, handleSubmit, watch, formState: {errors},
     } = useForm({
         defaultValues: {
-            name: "",
-            email: "",
-            password: "",
+            name: "", email: "", password: "",
         },
+        mode: 'onBlur'
     })
 
     async function onSubmit(data) {
-        const {email, password, name} = data
+        setSignUpLoading(true)
+
+        const {email, password, name} = data;
+
         const {data: signUpData, error} = await supabase.auth.signUp({
-            email: email,
-            password: password,
-            options: {
+            email, password, options: {
                 data: {
                     display_name: name,
                 },
-            }
-        })
+            },
+        });
 
         if (error) {
-            console.log("sign up error: " + error)
-            alert(error.message)
-        }if (error) {
-            console.log("sign up error: " + error);
-            alert(error.message);
-        } else if (!signUpData.session) {
-            // User is not confirmed, show an appropriate message
-            if (signUpData.user && signUpData.user.confirmation_sent_at) {
-                // If the email confirmation was already sent
-                alert("This email is already registered. Please check your inbox to confirm your account.");
-            } else {
-                // If the email is new and confirmation email is sent
-                alert("Check your email to confirm your account.");
-            }
-            setUserData({ email: email });
-            router.push('/ConfirmEmail'); // Redirect to confirmation screen
+            console.log("sign up error:", error);
+            setSignUpLoading(false)
+            setServerError(error.message)
+            return;
+        }
+
+        // TODO Clean this up for production:
+        // * This block handles both confirmed and unconfirmed sign-ups.
+        // * In production, Supabase will require email confirmation, so the `else` case can likely be removed.
+        if (!signUpData.session) {
+            setAlertModalData({
+                title: "Confirm Your Email",
+                message: "Check your inbox to confirm your account.",
+                type: "info",
+            });
+            setShowAlertModal(true);
+            updateUserData({ email });
+
+            setTimeout(() => router.navigate("/ConfirmEmail"), 2000);
         } else {
-            // User has been successfully signed up and logged in
-            console.log("sign up success: " + JSON.stringify(signUpData));
-            alert("Sign up successful!");
-            router.navigate("(tabs)/Home");
+            // Signed in directly (e.g., email confirm disabled)
+            setAlertModalData({
+                title: "Sign Up Successful",
+                message: "Welcome!",
+                type: "success",
+            });
+            setShowAlertModal(true);
+            setTimeout(() => router.navigate("/(tabs)/Home"), 2000);
         }
     }
+
 
     const handleGoogleSignUp = async () => {
         console.log("Google Sign-Up button pressed")
@@ -82,34 +108,46 @@ export default function SignUp() {
         setShowPassword((prev) => !prev)
     }
 
+    const emailWatch = watch('email')
+    useEffect(() => {
+        setServerError("")
+    }, [emailWatch]);
+
+
+    const MemoizedWave = React.memo(() => <Wave height={340} style={styles.WaveBackground}/>);
+    const buttonClass = `w-11/12 self-center p-5 rounded-xl mt-10 ${
+        SignUpLoading ? "bg-gray-400" : "bg-accent"
+    }`;
+
     return (
-        <View style={styles.container}>
-
-            <View>
-                <View style={[styles.headerContainer, {backgroundColor: '#AF47E8'}]} className={""}>
-                    <Text
-                        style={[styles.welcomeText, {fontFamily: 'Comfortaa-Bold'}]}
-                        className={"text-6xl text-white text-center mt-5"}
-                    >
-                        Sign Up
-                    </Text>
+        <KeyboardAvoidingView
+            behavior={Platform.OS === "ios" ? "padding" : "height"}
+            style={{flex: 1}}
+        >
+            <ScrollView>
+                <CostumAlert title={AlertModalData.title} message={AlertModalData.message} type={AlertModalData.type} visible={ShowAlertModal}/>
+                <View>
+                    <View style={{backgroundColor: '#AF47E8', height: 150}} className={"justify-center items-center"}>
+                        <Text
+                            style={{fontFamily: 'Comfortaa-Bold'}}
+                            className={"text-6xl text-white text-center mt-14"}
+                        >
+                            Sign Up
+                        </Text>
+                    </View>
+                    <MemoizedWave/>
                 </View>
-                <Wave height={310} style={styles.WaveBackground}/>
-            </View>
 
-            <View className={"flex-1 mt-20 m-5"}>
-                <View className={"m-5"}>
-                    <Controller
-                        control={control}
-                        rules={{
-                            required: true,
-                            maxLength: {
-                                value: 40,
-                                message: "Name can't be longer than 40 characters.",
-                            }
-                        }}
-                        render={({field: {onChange, onBlur, value}}) => (
-                            <View
+                <View className={"flex-1 mt-20 m-5"}>
+                    <View className={"m-5"}>
+                        <Controller
+                            control={control}
+                            rules={{
+                                required: true, maxLength: {
+                                    value: 40, message: "Name can't be longer than 40 characters.",
+                                }
+                            }}
+                            render={({field: {onChange, onBlur, value}}) => (<View
                                 className={errors.name ? `flex-row items-center border-b border-red-600 rounded-md` : `flex-row items-center border-b rounded-md`}>
                                 <Ionicons name="person" size={24} color="gray" className="mr-2"/>
                                 <TextInput
@@ -119,29 +157,24 @@ export default function SignUp() {
                                     onChangeText={onChange}
                                     value={value}
                                 />
-                            </View>
-                        )}
-                        name="name"
-                    />
-                    {errors.name ? (
-                        <Text className="text-red-600">
+                            </View>)}
+                            name="name"
+                        />
+                        {errors.name ? (<Text className="text-red-600">
                             {errors.name.message || 'Name is required.'}
-                        </Text>
-                    ) : null}
-                </View>
+                        </Text>) : null}
+                    </View>
 
-                <View className={"m-5"}>
-                    <Controller
-                        control={control}
-                        rules={{
-                            required: true,
-                            pattern: {
-                                value: /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/, // standard email regex
-                                message: 'Please enter a valid email address',
-                            },
-                        }}
-                        render={({field: {onChange, onBlur, value}}) => (
-                            <View
+                    <View className={"m-5"}>
+                        <Controller
+                            control={control}
+                            rules={{
+                                required: true, pattern: {
+                                    value: /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/, // standard email regex
+                                    message: 'Please enter a valid email address',
+                                },
+                            }}
+                            render={({field: {onChange, onBlur, value}}) => (<View
                                 className={errors.email ? `flex-row items-center border-b border-red-600 rounded-md` : `flex-row items-center border-b rounded-md`}>
                                 <Ionicons name="mail" size={24} color="gray" className="mr-2"/>
                                 <TextInput
@@ -151,29 +184,24 @@ export default function SignUp() {
                                     onChangeText={onChange}
                                     value={value}
                                 />
-                            </View>
-                        )}
-                        name="email"
-                    />
-                    {errors.email ? (
-                        <Text className="text-red-600">
+                            </View>)}
+                            name="email"
+                        />
+                        {errors.email ? (<Text className="text-red-600">
                             {errors.email.message || 'Email is required.'}
-                        </Text>
-                    ) : null}
-                </View>
+                        </Text>) : null}
+                    </View>
 
-                <View className={"m-5"}>
-                    <Controller
-                        control={control}
-                        rules={{
-                            required: true,
-                            pattern: {
-                                value: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?`~]).{8,}$/,
-                                message: 'Password must include uppercase, lowercase, number, special character and be at least 8 characters.',
-                            },
-                        }}
-                        render={({field: {onChange, onBlur, value}}) => (
-                            <View
+                    <View className={"m-5"}>
+                        <Controller
+                            control={control}
+                            rules={{
+                                required: true, pattern: {
+                                    value: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?`~]).{8,}$/,
+                                    message: 'Password must include uppercase, lowercase, number, special character and be at least 8 characters.',
+                                },
+                            }}
+                            render={({field: {onChange, onBlur, value}}) => (<View
                                 className={errors.password ? `flex-row items-center border-b border-red-600 rounded-md` : `flex-row items-center border-b rounded-md`}>
                                 <Ionicons name="lock-closed" size={24} color="gray" className="mr-2"/>
                                 <TextInput
@@ -186,67 +214,67 @@ export default function SignUp() {
                                 />
                                 <Ionicons onPress={togglePasswordVisibility} name={showPassword ? `eye-off` : "eye"}
                                           size={24} color="gray" className="mr-2"/>
-                            </View>
-                        )}
-                        name="password"
-                    />
-                    {errors.password ? (
-                        <Text className="text-red-600">
+                            </View>)}
+                            name="password"
+                        />
+                        {errors.password ? (<Text className="text-red-600">
                             {errors.password.message || 'Password is required.'}
-                        </Text>
-                    ) : null}
+                        </Text>) : null}
+                    </View>
+
+                    <View className={"ps-5"}>
+                        {ServerError && Object.keys(errors).length === 0 && (
+                            <Text className="text-red-600">{ServerError}!</Text>
+                        )}
+                    </View>
+
+                    <TouchableOpacity
+                        className={buttonClass}
+                        disabled={SignUpLoading}
+                        onPress={handleSubmit(onSubmit)}
+                    >
+                        {SignUpLoading ? (
+                            <ActivityIndicator size="small" color="#fff" />
+                        ) : (
+                            <Text className="text-white text-xl text-center" style={{ fontFamily: "Comfortaa-Bold" }}>
+                                Sign Up
+                            </Text>
+                        )}
+                    </TouchableOpacity>
+
+
+                    <Text className={"text-2xl text-center mt-4 text-gray-500"}>or</Text>
+
+                    <TouchableOpacity
+                        className={"w-11/12 self-center mt-5 mb-10"}
+                        onPress={handleGoogleSignUp}
+                        style={{
+                            backgroundColor: '#fff',
+                            padding: 12,
+                            borderRadius: 10,
+                            borderWidth: 1,
+                            borderColor: '#ddd',
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                        }}
+                    >
+                        <Ionicons name="logo-google" size={30} color="#DB4437" style={{marginRight: 10}}/>
+                        <Text className={"text-xl"} style={{fontFamily: "Comfortaa-Bold"}}>Sign up with Google</Text>
+                    </TouchableOpacity>
+
+                    <Text className={"text-lg capitalize text-center"}>already have account? <Link
+                        href={"/(auth)/LogIn"}><Text
+                        className={"text-accent"}>Log In</Text></Link></Text>
+
                 </View>
-
-
-                <TouchableOpacity className={"w-11/12 self-center bg-accent p-5 rounded-xl mt-7"}
-                                  onPress={handleSubmit(onSubmit)}>
-                    <Text className={"text-white text-xl text-center"} style={{fontFamily: "Comfortaa-Bold"}}>Sign
-                        Up</Text>
-                </TouchableOpacity>
-
-                <Text className={"text-2xl text-center mt-7 text-gray-500"}>or</Text>
-
-
-                <TouchableOpacity
-                    onPress={handleGoogleSignUp}
-                    style={{
-                        backgroundColor: '#fff',
-                        padding: 12,
-                        borderRadius: 10,
-                        marginTop: 20,
-                        borderWidth: 1,
-                        borderColor: '#ddd',
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                    }}
-                >
-                    <Ionicons name="logo-google" size={30} color="#DB4437" style={{marginRight: 10}}/>
-                    <Text className={"text-xl"} style={{fontFamily: "Comfortaa-Bold"}}>Sign up with Google</Text>
-                </TouchableOpacity>
-            </View>
-        </View>
+            </ScrollView>
+        </KeyboardAvoidingView>
     )
 }
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-    },
-    headerContainer: {
-        height: 150,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    WaveBackground: {
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-    },
-    welcomeText: {
-        textShadowColor: 'rgba(255, 255, 255, 0.6)',
-        textShadowOffset: {width: 13, height: 13},    // Adjust offset for spread (no blur)
-        textShadowRadius: 0,
+     WaveBackground: {
+        position: 'absolute', top: 0, left: 0, right: 0,
     }
 })

@@ -1,0 +1,14 @@
+// components/CustomAlert.js
+import { View, Text, Pressable, Modal } from "react-native";
+
+export default function CustomAlert({ visible, message }) {
+    return (
+        <Modal transparent animationType="fade" visible={visible}>
+            <View className="flex-1 items-center justify-center bg-black/50">
+                <View className="w-11/12 bg-white rounded-2xl p-6 shadow-xl dark:bg-zinc-900">
+                    <Text className="mt-2 text-gray-600 dark:text-gray-300">{message}</Text>
+                </View>
+            </View>
+        </Modal>
+    );
+}

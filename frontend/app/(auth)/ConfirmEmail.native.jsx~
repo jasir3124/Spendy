@@ -40,7 +40,7 @@ export default function ConfirmEmail() {
             </Text>
 
             <TouchableOpacity
-                onPress={() => router.push('/LogIn')}
+                onPress={() => router.push('/(auth)/LogIn')}
                 className="bg-primary p-4 rounded-xl mb-6 w-4/5"
             >
                 <Text className="text-light text-lg text-center font-semibold">Back to Login</Text>

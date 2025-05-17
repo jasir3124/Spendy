@@ -8,6 +8,9 @@
 /.pnp
 .pnp.js
 
+package.json
+package_lock.json
+
 # Expo
 .expo/
 dist/
